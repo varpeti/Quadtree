@@ -1,6 +1,8 @@
 kamera = require('kamera')
 quadtree = require('quadtree')
 
+DEBUG = true
+
 function love.load()
 	XX, YY = love.window.getMode()
 	k = {x=0,y=0,speed=100}
@@ -48,9 +50,23 @@ end
 function love.draw()
 	kamera:aPos(k.x,k.y)
 	kamera:set()
-		quadtree:debugdraw()
+		counter = 0
+		quadtree:draw(quadraw)
 		love.graphics.setColor(255,255,255,255) 
-		love.graphics.circle("fill",0,0,10)
+		love.graphics.print(counter,0,0)
 	kamera:unset()
 		love.graphics.circle("fill",XX/2,YY/2,5)
+end
+
+function quadraw(obj)
+	counter=counter+1
+	if obj.type==0 then if DEBUG then love.graphics.setColor(0,0,0,255) else return end
+	elseif obj.type==1 then love.graphics.setColor(0,255,0,255)
+	elseif obj.type==2 then love.graphics.setColor(255,0,0,255)
+	end
+	love.graphics.rectangle("fill",obj.x,obj.y,obj.width,obj.heigth)
+	if DEBUG then
+		love.graphics.setColor(255,255,255,255)
+		love.graphics.rectangle("line",obj.x,obj.y,obj.width,obj.heigth)
+	end
 end

@@ -24,30 +24,31 @@ SOFTWARE.
 
 local quadtree = {}
 
+-- unit a legkisebb cella mérete
+-- chunk a legnagyobb cella mérete
+quadtree.unit = 10^2
+quadtree.chunk = 1000
 function quadtree:init(unit,chunk,x,y)
     self.unit = (unit or 10)^2
     self.chunk = chunk or 1000
     self.root = node.new(x or -chunk/2, y or -chunk/2, chunk, chunk, 0, nil)
 end
 
+-- x,y koordináták közepére helyezi a megadott naygságó téglalapot.
 function quadtree:insert(x, y, width, height, type)
-    self.root:modifyNode(x-width/2, y-height/2, width, height, type)
-end
-
-function quadtree:debugdraw()
-    counter = 0
-    self.root:debugdraw()
-    love.graphics.print(counter,-50,-50)
+    self.root:modifyNode(x-width/2, y-height/2, width, height, type or 0)
 end
 
 ---------------------NODE----------------------
-    
+
+-- Class node
 node = {}
 node.mt = {}
 node.mt.__index = function(table, key)
     return node.prototype[key]
 end
 
+-- constructor 
 function node.new(x, y, width, height, type, parent)
     local new_node = {}
     setmetatable(new_node,node.mt)
@@ -63,24 +64,27 @@ function node.new(x, y, width, height, type, parent)
     return new_node
 end
 
+-- prototype függvények 
 node.prototype = {}
 
+-- módosítja egy tartomány típúsát a fában
 function node.prototype:modifyNode(x, y, width, height, type)
-    if (self:isFullyContained(x, y, width, height)) then
+    if (self:isFullyContained(x, y, width, height)) then -- ha teljesen kitölti a cellát (és/vagy túl is nyúl rajta)
         self.type = type
         self.isLeaf = true
         return
-    elseif (self:isFullyOutside(x, y, width, height)) then
+    elseif (self:isFullyOutside(x, y, width, height)) then -- ha teljesen kívül van
         return
-    else
-        if (self.area <= quadtree.unit) then return end
-        if (self.isLeaf) then
+    else -- Ha benne van egy cellában de nem tölti ki teljesen
+        if (self.area <= quadtree.unit) then return end -- ha túl kicsi a test, nem rajzolja be
+        if (self.isLeaf) then -- Ha levél a cella akkor felosztja 4 részre (Child)
             self:split()
         end
-        self:modifyChildNodes(x, y, width, height, type)
+        self:modifyChildNodes(x, y, width, height, type) -- Megváltoztatja a 4 (Child) cella típusát
     end
 end
 
+-- true ha a test teljesen kitölti (és/vagy túl is nyúl rajta)
 function node.prototype:isFullyContained(x, y, width, height) 
     return (x <= self.x and 
             x + width >= self.x + self.width and
@@ -88,6 +92,7 @@ function node.prototype:isFullyContained(x, y, width, height)
             y + height >= self.y + self.height)
 end
 
+-- true ha a testnek és a cellának nincsen egy közös pontja se
 function node.prototype:isFullyOutside(x, y, width, height)
     return (self.x + self.width <= x or
             self.y + self.height <= y or
@@ -95,6 +100,7 @@ function node.prototype:isFullyOutside(x, y, width, height)
             y + height <= self.y)
 end
 
+-- Felosztja 4 részre a cellát
 function node.prototype:split()
     self.isLeaf = false
     local childWidth = self.width/2
@@ -105,12 +111,13 @@ function node.prototype:split()
     self.quadrant[4] = node.new(self.x + childWidth,    self.y + childHeight,   childWidth, childHeight, self.type, self)
 end
 
+-- Megváltoztatja a 4 (Child) cella típusát
 function node.prototype:modifyChildNodes(x, y, width, height, type)
     for i = 1,4 do
-        self.quadrant[i]:modifyNode(x, y, width, height, type)
+        self.quadrant[i]:modifyNode(x, y, width, height, type) -- Meghívja mind a 4-re a típusmódosítást
     end
     local sameType = true
-    for i = 2,4 do
+    for i = 2,4 do -- Megvizsgálja hogy mind a 4-nek ugyan olyan-e a típusa
         if (not self.quadrant[i].isLeaf 
             or not self.quadrant[i-1].isLeaf
             or self.quadrant[i].type ~= self.quadrant[i-1].type) 
@@ -119,42 +126,37 @@ function node.prototype:modifyChildNodes(x, y, width, height, type)
             break
         end
     end
-    if sameType then
+    if sameType then -- Ha igen, összevonja őket.
         self:mergeQuadrants()
     end
 end
 
+-- Öszzevon egy szülőhöz tartozó 4 cellát, és levél lesz
 function node.prototype:mergeQuadrants()
     self.type = self.quadrant[1].type
     self.quadrant = {}
     self.isLeaf = true
 end
 
-----debugdraw----
+-----------------draw------------------
 
-function node.prototype:debugdraw() 
+-- Kiküldi egy függvénynek a kirajzolandó téglalapokat
+function quadtree:draw(fv)
+    self.root:draw(fv)
+end
+
+function node.prototype:draw(fv) 
     if self.isLeaf then
-        self:drawSelf()
+        self:drawSelf(fv) -- Ha levél kirajzolja
     else
         for i = 1,4 do
-            self.quadrant[i]:debugdraw()
+            self.quadrant[i]:draw(fv) -- Ha nem akkor megnézi a Child celláit
         end
     end
 end
 
-function node.prototype:drawSelf()
-    counter = counter+1
-    if self.type==0 then 
-        love.graphics.setColor(0,0,0,255) 
-    elseif self.type==1 then 
-        love.graphics.setColor(0,255,0,255)
-    elseif self.type==2 then 
-        love.graphics.setColor(255,0,255,255) 
-    end 
-    love.graphics.rectangle('fill',self.x, self.y, self.width, self.height)
-    love.graphics.setColor(255,255,255,255) 
-    love.graphics.rectangle('line',self.x, self.y, self.width, self.height) 
-    
+function node.prototype:drawSelf(fv) --Meghívja a függvényt a téglalap adataival
+    fv({x=self.x,y=self.y,width=self.width,heigth=self.height,type=self.type})
 end
 
 return quadtree
