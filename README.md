@@ -1,8 +1,9 @@
 # Quadtree
 A quadtree libary written in Lua
 
-## Screenshot
-![PICTURE](https://github.com/varpeti/Quadtree/blob/master/quadtree.png)
+## Screenshots
+![P1](https://github.com/varpeti/Quadtree/blob/master/quadtree1.png)
+![P2](https://github.com/varpeti/Quadtree/blob/master/quadtree2.png)
 
 ## Installation
 
@@ -57,11 +58,15 @@ function foo(obj)
 
 ## Example
 [LÖVE](http://www.love2d.org)
+
 main.lua
 
 controll: w a s d
+
 draw: q e
+
 delelet: del
+
 exit: esc 
 
 ## Licens
